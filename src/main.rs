@@ -1,6 +1,4 @@
-extern crate rusqlite;
-
-use rusqlite::Connection;
+use rusqlite::{Connection, NO_PARAMS};
 
 #[derive(Debug)]
 struct Contact {
@@ -17,15 +15,15 @@ fn main() {
     let contact_query = "SELECT _id,display_name FROM raw_contacts";
     let mut stmt = conn.prepare(contact_query).unwrap();
 
-    let contact_iter = stmt.query_map(&[], |row| {
-        let id = row.get(0);
-        let name = row.get(1);
+    let contact_iter = stmt.query_map(NO_PARAMS, |row| {
+        let id = row.get(0).unwrap();
+        let name = row.get(1).unwrap();
         let mut phone_nums = Vec::new();
 
         let num_query = format!("SELECT normalized_number FROM phone_lookup WHERE raw_contact_id={}", id);
 
         let mut stmt2 = conn.prepare(&num_query).unwrap();
-        let phone_num_iter = stmt2.query_map(&[], |row| row.get(0)).unwrap();
+        let phone_num_iter = stmt2.query_map(NO_PARAMS, |row| row.get(0)).unwrap();
 
         // Replace 00 in numbers with +
         let phone_num_mapped = phone_num_iter
@@ -51,7 +49,7 @@ fn main() {
             phone_nums.push(phone_num);
         }
 
-        Contact { id, name, phone_nums }
+        Ok(Contact { id, name, phone_nums })
     }).unwrap();
 
     for c in contact_iter {
